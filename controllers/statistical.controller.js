@@ -27,89 +27,91 @@ module.exports = {
     return res.status(200).json(stac);
   },
   parking: async (req, res, next) => {
-    let stacCreate = {};
-    let bienSo = req.query.trans_license;
-    if (!bienSo) {
-      throw new ErrorResponse(401, "Vui lòng cung cấp biển số xe gửi");
-    }
-
-    console.log(bienSo);
-
-    let trans = await transModel.findOne({
-      trans_license: bienSo,
-    });
-
-    if (!trans) {
-      throw new ErrorResponse(404, "Xe chưa được đăng ký gửi trên hệ thống");
-    }
-
-    let st = await stacModel.findOne({
-      transport: trans._id,
-      isOut: 0,
-    });
-    if (st) {
-      throw new ErrorResponse(401, "Xe đã được gửi trong bãi");
-    }
-    let user = await userModel.findById(trans.own);
-
-    let hetTien = 0;
-    if (user.money < 5000) {
-      hetTien = 1;
-    }
-    //trừ tiền gửi xe, mỗi lần gửi trừ 5000
-    let bdUpUser = {
-      money: user.money - 5000,
-      hetTien: hetTien,
-    };
-    if (hetTien) {
-      bdUpUser.ngayHet = new Date();
-    }
-    let userUpdate = await userModel.findByIdAndUpdate(user._id, bdUpUser, {
-      new: true,
-    });
-    if (!userUpdate) {
-      throw new ErrorResponse(400, "Tài khoản thanh toán không thành công");
-    }
-    var today = new Date();
-    let d =
-      Number(today.getDate() + 0) < 10
-        ? "0" + today.getDate()
-        : today.getDate();
-    let m =
-      Number(today.getMonth() + 1) < 10
-        ? "0" + (today.getMonth() + 1)
-        : today.getMonth() + 1;
-    var date = d + "-" + m + "-" + today.getFullYear();
-    var time =
-      today.getHours() + ":" + today.getMinutes() + ":" + today.getSeconds();
-    var dateTime = date + " " + time;
-    stacCreate.timeCome = dateTime;
-    stacCreate.own = trans.own;
-    stacCreate.transport = trans._id;
-    stacCreate.position = req.body?.position ? req.body?.position : null;
-    //update xe có mã qr
-    let transUpdateQR = await transModel.findByIdAndUpdate(
-      trans._id,
-      { qr: "secretkey-" + bienSo },
-      { new: true }
-    );
-    if (!transUpdateQR) {
-      throw new ErrorResponse(404, "Không tìm thấy xe");
-    }
-    let stac = await stacModel.create(stacCreate);
-    let newStac = await stacModel.findById(stac._id).populate({
-      path: "transport",
-      populate: {
-        path: "own",
-      },
-    });
-    if (hetTien) {
-      throw new ErrorResponse(
-        400,
-        "Xe đã được ghi nợ. Tài khoản của bạn đã hết. Vui lòng nạp trong 1 tuần"
+    try{
+      let stacCreate = {};
+      let bienSo = req.query.trans_license;
+      if (!bienSo) {
+        throw new ErrorResponse(401, "Vui lòng cung cấp biển số xe gửi");
+      }
+  
+      console.log(bienSo);
+  
+      let trans = await transModel.findOne({
+        trans_license: bienSo,
+      });
+  
+      if (!trans) {
+        throw new ErrorResponse(404, "Xe chưa được đăng ký gửi trên hệ thống");
+      }
+  
+      let st = await stacModel.findOne({
+        transport: trans._id,
+        isOut: 0,
+      });
+      if (st) {
+        throw new ErrorResponse(401, "Xe đã được gửi trong bãi");
+      }
+      let user = await userModel.findById(trans.own);
+  
+      let hetTien = 0;
+      if (user.money < 5000) {
+        hetTien = 1;
+      }
+      //trừ tiền gửi xe, mỗi lần gửi trừ 5000
+      let bdUpUser = {
+        money: user.money - 5000,
+        hetTien: hetTien,
+      };
+      if (hetTien) {
+        bdUpUser.ngayHet = new Date();
+      }
+      let userUpdate = await userModel.findByIdAndUpdate(user._id, bdUpUser, {
+        new: true,
+      });
+      if (!userUpdate) {
+        throw new ErrorResponse(400, "Tài khoản thanh toán không thành công");
+      }
+      var today = new Date();
+      let d =
+        Number(today.getDate() + 0) < 10
+          ? "0" + today.getDate()
+          : today.getDate();
+      let m =
+        Number(today.getMonth() + 1) < 10
+          ? "0" + (today.getMonth() + 1)
+          : today.getMonth() + 1;
+      var date = d + "-" + m + "-" + today.getFullYear();
+      var time =
+        today.getHours() + ":" + today.getMinutes() + ":" + today.getSeconds();
+      var dateTime = date + " " + time;
+      stacCreate.timeCome = dateTime;
+      stacCreate.own = trans.own;
+      stacCreate.transport = trans._id;
+      stacCreate.position = req.body?.position ? req.body?.position : null;
+      //update xe có mã qr
+      let transUpdateQR = await transModel.findByIdAndUpdate(
+        trans._id,
+        { qr: "secretkey-" + bienSo },
+        { new: true }
       );
+      if (!transUpdateQR) {
+        throw new ErrorResponse(404, "Không tìm thấy xe");
+      }
+      let stac = await stacModel.create(stacCreate);
+      let newStac = await stacModel.findById(stac._id).populate({
+        path: "transport",
+        populate: {
+          path: "own",
+        },
+      });
+      if (hetTien) {
+        return res.status(200).json("Xe đã được ghi nợ. Tài khoản của bạn đã hết. Vui lòng nạp trong 1 tuần");
+      }
+      return res.status(201).json(newStac);
+    }catch(err){
+      console.log(err)
     }
-    return res.status(201).json(newStac);
+   
   },
   deparking: async (req, res, next) => {
     let qr = req.query.qr;
