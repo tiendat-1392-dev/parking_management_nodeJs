@@ -147,9 +147,13 @@ module.exports = {
       stacUpdate,
       { new: true }
     );
+
     if (!stac) {
       throw new ErrorResponse(404, "Lỗi truy vấn biển số xe từ dữ liệu xe");
     }
+
+    await transModel.findOneAndUpdate( { trans_license: bienSo }, {qr:""})
+
     let deparkingTransport = await stacModel
       .findOne({
         _id: stac._id,
