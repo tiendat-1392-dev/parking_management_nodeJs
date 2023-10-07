@@ -27,23 +27,23 @@ module.exports = {
     return res.status(200).json(stac);
   },
   parking: async (req, res, next) => {
-    try{
+    try {
       let stacCreate = {};
       let bienSo = req.query.trans_license;
       if (!bienSo) {
         throw new ErrorResponse(401, "Vui lòng cung cấp biển số xe gửi");
       }
-  
+
       console.log(bienSo);
-  
+
       let trans = await transModel.findOne({
         trans_license: bienSo,
       });
-  
+
       if (!trans) {
         throw new ErrorResponse(404, "Xe chưa được đăng ký gửi trên hệ thống");
       }
-  
+
       let st = await stacModel.findOne({
         transport: trans._id,
         isOut: 0,
@@ -52,7 +52,7 @@ module.exports = {
         throw new ErrorResponse(401, "Xe đã được gửi trong bãi");
       }
       let user = await userModel.findById(trans.own);
-  
+
       let hetTien = 0;
       if (user.money < 5000) {
         hetTien = 1;
@@ -105,13 +105,16 @@ module.exports = {
         },
       });
       if (hetTien) {
-        return res.status(200).json("Xe đã được ghi nợ. Tài khoản của bạn đã hết. Vui lòng nạp trong 1 tuần");
+        return res
+          .status(200)
+          .json(
+            "Xe đã được ghi nợ. Tài khoản của bạn đã hết. Vui lòng nạp trong 1 tuần"
+          );
       }
       return res.status(201).json(newStac);
-    }catch(err){
-      console.log(err)
+    } catch (err) {
+      throw err;
     }
-   
   },
   deparking: async (req, res, next) => {
     let qr = req.query.qr;
@@ -152,7 +155,7 @@ module.exports = {
       throw new ErrorResponse(404, "Lỗi truy vấn biển số xe từ dữ liệu xe");
     }
 
-    await transModel.findOneAndUpdate( { trans_license: bienSo }, {qr:""})
+    await transModel.findOneAndUpdate({ trans_license: bienSo }, { qr: "" });
 
     let deparkingTransport = await stacModel
       .findOne({
